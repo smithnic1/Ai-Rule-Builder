@@ -1,0 +1,23 @@
+{
+  "name": "AI Rule Builder Dev",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/backend,target=/workspace/backend,type=bind",
+    "source=${localWorkspaceFolder}/frontend,target=/workspace/frontend,type=bind"
+  ],
+  "postCreateCommand": "dotnet --version && node --version"
+}

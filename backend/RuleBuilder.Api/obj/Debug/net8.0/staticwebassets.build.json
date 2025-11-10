@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "tnzyNPQ1N6A9KbkD9uxwryd587fWwgcsYtyYJ/Cx6zE=",
+  "Source": "RuleBuilder.Api",
+  "BasePath": "_content/RuleBuilder.Api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

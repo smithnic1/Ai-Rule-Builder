@@ -1,0 +1,6 @@
+@RuleBuilder.Api_HostAddress = http://localhost:5272
+
+GET {{RuleBuilder.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
