@@ -15,6 +15,9 @@
       ]
     }
   },
+  "remoteEnv": {
+    "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}"
+  },
   "mounts": [
     "source=${localWorkspaceFolder}/backend,target=/workspace/backend,type=bind",
     "source=${localWorkspaceFolder}/frontend,target=/workspace/frontend,type=bind"

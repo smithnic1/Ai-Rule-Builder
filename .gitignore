@@ -1,0 +1,10 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/node_modules/
+
+# User secrets
+.env
+*.env
+!**/.env.example
+!**/.env.sample

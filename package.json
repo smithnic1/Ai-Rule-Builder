@@ -1,0 +1,14 @@
+{
+  "name": "ai-rule-builder",
+  "version": "1.0.0",
+  "description": "Dev helper scripts for running backend and frontend together",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend/RuleBuilder.Api && dotnet watch run",
+    "frontend": "cd frontend/rule-builder-ui && npm run dev -- --host 0.0.0.0 --port 5173"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
