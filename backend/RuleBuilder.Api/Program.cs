@@ -1,9 +1,32 @@
+using System.Collections.Generic;
 using System.IO;
+using Microsoft.AspNetCore.Http;
 using RuleBuilder.Api.Services;
 
 LoadEnvFile();
 
 var builder = WebApplication.CreateBuilder(args);
+const string FrontendCorsPolicy = "AllowFrontend";
+var allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "http://localhost:5174",
+    "https://localhost:5174",
+    "http://127.0.0.1:5174",
+    "https://127.0.0.1:5174",
+    "http://localhost:5000",
+    "https://localhost:5000",
+    "http://127.0.0.1:5000",
+    "https://127.0.0.1:5000"
+};
+
+var additionalOrigins = Environment.GetEnvironmentVariable("ALLOWED_CORS_ORIGINS");
+if (!string.IsNullOrWhiteSpace(additionalOrigins))
+{
+    foreach (var origin in additionalOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        allowedOrigins.Add(origin);
+    }
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -11,10 +34,10 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyHeader()
-              .AllowAnyMethod()
-              .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173"));
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+        policy.SetIsOriginAllowed(origin => IsAllowedOrigin(origin, allowedOrigins))
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 builder.Services.AddSingleton(provider =>
@@ -37,8 +60,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors();
-app.MapControllers();
+app.UseRouting();
+app.UseCors(FrontendCorsPolicy);
+app.MapControllers().RequireCors(FrontendCorsPolicy);
+app.MapMethods("{*path}", new[] { HttpMethods.Options }, () => Results.Ok())
+   .RequireCors(FrontendCorsPolicy);
 
 app.Run();
 
@@ -74,4 +100,27 @@ static void LoadEnvFile()
             Environment.SetEnvironmentVariable(key, value);
         }
     }
+}
+
+static bool IsAllowedOrigin(string? origin, ISet<string> allowedOrigins)
+{
+    if (string.IsNullOrWhiteSpace(origin))
+    {
+        return false;
+    }
+
+    if (allowedOrigins.Contains(origin))
+    {
+        return true;
+    }
+
+    if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+    {
+        if (uri.Host.EndsWith(".app.github.dev", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
