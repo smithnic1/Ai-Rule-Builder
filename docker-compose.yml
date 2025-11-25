@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend/RuleBuilder.Api
+      dockerfile: Dockerfile
+    container_name: ai-rule-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/RuleBuilder.Api/Plugins:/app/Plugins
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-rule-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:5000

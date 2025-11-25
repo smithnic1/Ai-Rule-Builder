@@ -13,24 +13,17 @@ type RulePipelineResponse = {
   result: string
 }
 
-const API_BASE_URL = (() => {
-  const raw =
-    (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/ai'
+const API_URL_BASE = (() => {
+  const raw = import.meta.env.VITE_API_URL as string | undefined
+  if (!raw) {
+    return ''
+  }
   return raw.endsWith('/') ? raw.slice(0, -1) : raw
 })()
 
-const PLUGIN_BASE_URL = (() => {
-  const raw =
-    (import.meta.env.VITE_PLUGIN_BASE_URL as string | undefined) ?? '/api/plugin'
-  return raw.endsWith('/') ? raw.slice(0, -1) : raw
-})()
-
-const RULE_PIPELINE_BASE_URL = (() => {
-  const raw =
-    (import.meta.env.VITE_RULE_PIPELINE_BASE_URL as string | undefined) ??
-    '/api/rulepipeline'
-  return raw.endsWith('/') ? raw.slice(0, -1) : raw
-})()
+const API_BASE_URL = `${API_URL_BASE}/api/ai`
+const PLUGIN_BASE_URL = `${API_URL_BASE}/api/plugin`
+const RULE_PIPELINE_BASE_URL = `${API_URL_BASE}/api/rulepipeline`
 
 function App() {
   const [input, setInput] = useState('')
