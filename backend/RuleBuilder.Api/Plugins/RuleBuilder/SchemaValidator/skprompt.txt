@@ -1,0 +1,28 @@
+You validate structured rule JSON.
+
+Given the following JSON:
+
+{{$input}}
+
+Check if it matches this schema exactly:
+
+{
+  "action": "string (can be empty)",
+  "target": "string (can be empty)",
+  "constraints": ["string", ... zero or more items],
+  "timeRange": "string or null"
+}
+
+Rules:
+- Always treat "constraints" as an array of strings (empty array is ok).
+- "timeRange" must be a string value or null.
+- Empty string values for "action" or "target" are acceptable and should NOT be flagged as issues.
+- Never invent additional fields or omit required ones.
+- Respond with JSON ONLY. No code fences, backticks, or explanations.
+- Strings may include spaces, punctuation, or phrases like "if cat meows"—these are valid and should not be treated as invalid characters.
+
+If valid, return:
+{"valid": true, "issues": []}
+
+If invalid, return:
+{"valid": false, "issues": ["explain issue 1", "explain issue 2"]}

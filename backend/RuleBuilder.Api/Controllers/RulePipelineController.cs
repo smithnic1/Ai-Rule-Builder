@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RuleBuilder.Api.Services;
 
@@ -17,8 +19,17 @@ public class RulePipelineController(AiService ai) : ControllerBase
             return BadRequest("Text is required.");
         }
 
-        var result = await _ai.ExtractRulePipeline(dto.Text, cancellationToken);
-        return Ok(new { result });
+        try
+        {
+            var normalized = await _ai.ExtractRulePipeline(dto.Text, cancellationToken);
+            using var doc = JsonDocument.Parse(normalized);
+            var payload = doc.RootElement.Clone();
+            return Ok(new { result = payload });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
     }
 
     public record InputDto(string Text);

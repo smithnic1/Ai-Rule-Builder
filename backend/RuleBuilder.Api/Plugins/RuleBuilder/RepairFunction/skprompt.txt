@@ -1,0 +1,21 @@
+You repair malformed rule JSON.
+
+Input:
+{{$input}}
+
+Output:
+Return ONLY a corrected JSON object that follows this schema strictly:
+
+{
+  "action": "string (use empty string if missing)",
+  "target": "string (use empty string if missing)",
+  "constraints": ["string", ... zero or more items],
+  "timeRange": "string or null"
+}
+
+Rules:
+- Always return valid JSON without code fences, prefixes, or explanations.
+- If "constraints" is missing, return an empty array.
+- If "timeRange" is unknown, return null.
+- Never add properties outside the schema.
+- Always use plain double quotes (") for JSON strings; never output HTML entities like &quot;.

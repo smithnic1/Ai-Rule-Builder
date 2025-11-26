@@ -54,3 +54,5 @@
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/IntentExtractor/skprompt.txt
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/UtilityPlugin/SummarizePrompt/config.json
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/UtilityPlugin/SummarizePrompt/skprompt.txt
+/workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RepairFunction/skprompt.txt
+/workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/SchemaValidator/skprompt.txt

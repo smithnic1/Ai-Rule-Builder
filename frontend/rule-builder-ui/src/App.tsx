@@ -9,8 +9,15 @@ type SummarizeResponse = {
   summary: string
 }
 
+type RuleSchema = {
+  action: string
+  target: string
+  constraints: string[]
+  timeRange: string | null
+}
+
 type RulePipelineResponse = {
-  result: string
+  result: RuleSchema
 }
 
 const API_URL_BASE = (() => {
@@ -124,17 +131,31 @@ function App() {
         body: JSON.stringify({ text: input })
       })
       if (!response.ok) {
-        throw new Error('Failed to reach rule pipeline endpoint.')
+        let message = 'Failed to reach rule pipeline endpoint.'
+        try {
+          const text = await response.text()
+          if (text) {
+            try {
+              const parsed = JSON.parse(text) as { error?: string; message?: string }
+              message = parsed.error || parsed.message || text
+            } catch {
+              message = text
+            }
+          }
+        } catch {
+          // ignore and keep default message
+        }
+        throw new Error(message)
       }
       const data = (await response.json()) as RulePipelineResponse
-      setReply(formatReply(data.result))
+      setReply(JSON.stringify(data.result, null, 2))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error.'
       setError(message)
     } finally {
       setLoading(false)
     }
-  }, [input, formatReply])
+  }, [input])
 
   return (
     <div style={{ padding: 20 }}>

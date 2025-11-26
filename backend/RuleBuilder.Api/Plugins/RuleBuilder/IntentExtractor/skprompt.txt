@@ -1,14 +1,70 @@
-You are an AI assistant that extracts the user's intent for scheduling rules.
+You are an AI assistant that extracts structured rule logic from natural language input.
 
-Input:
-{{$input}}
+Your output MUST be strictly valid JSON matching this schema:
 
-Extract the rule intent in a structured JSON format:
 {
-  "action": "...",
-  "target": "...",
-  "constraints": [...],
-  "timeRange": "..."
+  "action": "string (primary verb phrase describing what should happen, using words from the input)",
+  "target": "string (object or entity the action applies to, using words from the input)",
+  "constraints": ["string", ... conditions or qualifiers derived from the input],
+  "timeRange": "string | null (when the rule applies, if specified)"
 }
 
-Keep it extremely short and strictly valid JSON.
+Use the following examples as a pattern:
+
+Example 1
+Input: if cat meows say hi
+Output:
+{
+  "action": "say hi",
+  "target": "cat",
+  "constraints": ["if cat meows"],
+  "timeRange": null
+}
+
+Example 2
+Input: when temperature exceeds 80 degrees send alert
+Output:
+{
+  "action": "send alert",
+  "target": "temperature monitor",
+  "constraints": ["when temperature exceeds 80 degrees"],
+  "timeRange": null
+}
+
+Example 3
+Input: cancel the show if I am hungry
+Output:
+{
+  "action": "cancel the show",
+  "target": "show",
+  "constraints": ["if I am hungry"],
+  "timeRange": null
+}
+
+Example 4
+Input: if rain starts then pause deliveries
+Output:
+{
+  "action": "pause deliveries",
+  "target": "deliveries",
+  "constraints": ["if rain starts"],
+  "timeRange": null
+}
+
+Now analyze the user input and respond.
+
+User input:
+{{$input}}
+
+Rules:
+
+- Never invent fields not in the schema.
+- Never wrap JSON in backticks or code blocks.
+- Never add explanations or comments.
+- The values for action, target, constraints and timeRange MUST be grounded in the actual user text. Do NOT introduce new domains like "meetings" or "team members" unless those exact concepts appear in the input.
+- For patterns like "if X then Y" or "when X, do Y":
+  - Put the main thing to do (Y) into "action" and its object into "target".
+  - Turn the condition (X) into one or more entries in "constraints".
+- Constraints should capture additional requirements (conditions, times, qualifiers, counts, etc.). If there are none, return an empty array.
+- If the text truly does not specify a value, use an empty string or null as appropriate.
+- Always produce valid JSON.
