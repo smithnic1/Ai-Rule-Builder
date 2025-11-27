@@ -9,16 +9,26 @@ Check if it matches this schema exactly:
 {
   "action": "string (can be empty)",
   "target": "string (can be empty)",
-  "constraints": ["string", ... zero or more items],
-  "timeRange": "string or null"
+  "conditions": [
+    {
+      "field": "string (can be empty)",
+      "operator": "string",
+      "value": "string"
+    }
+  ],
+  "timeRange": "string or null",
+  "priority": "integer",
+  "logic": "string (AND or OR)"
 }
 
 Rules:
-- Always treat "constraints" as an array of strings (empty array is ok).
+- Always treat "conditions" as an array of objects with field/operator/value (empty array is ok). Each condition must include all three fields.
 - "timeRange" must be a string value or null.
-- Empty string values for "action" or "target" are acceptable and should NOT be flagged as issues.
+- Empty string values for "action", "target", or condition fields are acceptable and should NOT be flagged as issues.
 - Never invent additional fields or omit required ones.
+- "priority" must be an integer (default 1 if not provided) and "logic" must be either AND or OR.
 - Respond with JSON ONLY. No code fences, backticks, or explanations.
+- If "conditions" is not an array, or contains entries missing field/operator/value, report it as invalid.
 - Strings may include spaces, punctuation, or phrases like "if cat meows"—these are valid and should not be treated as invalid characters.
 
 If valid, return:

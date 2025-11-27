@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RuleBuilder.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0fe6fa2c12f2a42d2c2cccfc2c2a5dba2b8209ce")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+293f39fc0c84d86405f64d106ff7d699605d3fab")]
 [assembly: System.Reflection.AssemblyProductAttribute("RuleBuilder.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RuleBuilder.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

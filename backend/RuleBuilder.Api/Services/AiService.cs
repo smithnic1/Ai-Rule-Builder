@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
@@ -7,8 +6,6 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace RuleBuilder.Api.Services;
-
-public record RuleValidationResult(bool IsValid, IReadOnlyList<string> Issues);
 
 public class AiService
 {
@@ -125,49 +122,51 @@ public class AiService
         return DecodeHtmlEntities(json);
     }
 
-    public async Task<RuleValidationResult> ValidateRuleJson(string json, CancellationToken cancellationToken = default)
+    public Task<bool> ValidateRuleJson(string json)
     {
-        json = DecodeHtmlEntities(json);
-
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new RuleValidationResult(false, ["JSON cannot be empty."]);
-        }
-
-        var function = _kernel.Plugins.GetFunction("RuleBuilder", "SchemaValidator");
-        var arguments = new KernelArguments { ["input"] = json };
-        var result = await _kernel.InvokeAsync(function, arguments, cancellationToken);
-        var content = result?.ToString();
-
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            return new RuleValidationResult(false, ["Schema validator returned no content."]);
+            return Task.FromResult(false);
         }
 
         try
         {
-            using var doc = JsonDocument.Parse(content);
+            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            var isValid = root.TryGetProperty("valid", out var validProperty) && validProperty.GetBoolean();
-
-            var issues = root.TryGetProperty("issues", out var issuesProperty) && issuesProperty.ValueKind == JsonValueKind.Array
-                ? [.. issuesProperty.EnumerateArray()
-                    .Select(issue => issue.GetString() ?? string.Empty)
-                    .Where(issue => !string.IsNullOrWhiteSpace(issue))]
-                : Array.Empty<string>();
-
-            // If the only reported issues are about HTML entities, treat the JSON as valid.
-            if (!isValid && issues.Length > 0 && issues.All(IsIgnorableValidationIssue))
+            if (!root.TryGetProperty("conditions", out var conditions) || conditions.ValueKind != JsonValueKind.Array)
             {
-                return new RuleValidationResult(true, []);
+                return Task.FromResult(false);
             }
 
-            return new RuleValidationResult(isValid, issues);
+            foreach (var condition in conditions.EnumerateArray())
+            {
+                if (condition.ValueKind != JsonValueKind.Object)
+                {
+                    return Task.FromResult(false);
+                }
+
+                if (!condition.TryGetProperty("field", out var field) || field.ValueKind != JsonValueKind.String)
+                {
+                    return Task.FromResult(false);
+                }
+
+                if (!condition.TryGetProperty("operator", out var op) || op.ValueKind != JsonValueKind.String)
+                {
+                    return Task.FromResult(false);
+                }
+
+                if (!condition.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.String)
+                {
+                    return Task.FromResult(false);
+                }
+            }
+
+            return Task.FromResult(true);
         }
         catch (JsonException)
         {
-            return new RuleValidationResult(false, [$"Schema validator returned invalid JSON: {content}"]);
+            return Task.FromResult(false);
         }
     }
 
@@ -196,18 +195,46 @@ public class AiService
         }
 
         // Step 4: Validate
-        var validation = await ValidateRuleJson(normalized, cancellationToken);
+        var validation = await ValidateRuleJson(normalized);
 
-        if (!validation.IsValid)
+        if (!validation)
         {
-            var reason = validation.Issues.Count > 0
-                ? string.Join("; ", validation.Issues)
-                : "Schema validation failed for an unknown reason.";
-
-            throw new InvalidOperationException($"Rule JSON failed validation: {reason}");
+            throw new InvalidOperationException("Rule JSON failed validation");
         }
 
         return normalized;
+    }
+
+    public async Task<string> RefineRuleJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new ArgumentException("JSON is required for refinement.", nameof(json));
+        }
+
+        // First repair any structural issues
+        var repaired = await NormalizeRuleJson(json);
+
+        // Refine the repaired JSON
+        var result = await _kernel.InvokeAsync("RuleBuilder", "RefinePrompt",
+            new() { ["input"] = repaired });
+
+        var refined = result.GetValue<string>();
+
+        if (string.IsNullOrWhiteSpace(refined))
+        {
+            throw new InvalidOperationException("Refinement returned empty JSON.");
+        }
+
+        // Validate final output
+        var validation = await ValidateRuleJson(refined);
+
+        if (!validation)
+        {
+            throw new InvalidOperationException("Rule JSON failed validation");
+        }
+
+        return refined;
     }
 
     private static string DecodeHtmlEntities(string value)
@@ -262,13 +289,14 @@ public class AiService
                 ? targetProperty.GetString()?.Trim()
                 : null;
 
-            var constraintsEmpty = !root.TryGetProperty("constraints", out var constraintsProperty)
-                || constraintsProperty.ValueKind != JsonValueKind.Array
-                || !constraintsProperty.EnumerateArray().Any(element =>
-                    element.ValueKind == JsonValueKind.String &&
-                    !string.IsNullOrWhiteSpace(element.GetString()));
+            var conditionsEmpty = !root.TryGetProperty("conditions", out var conditionsProperty)
+                || conditionsProperty.ValueKind != JsonValueKind.Array
+                || !conditionsProperty.EnumerateArray().Any(element =>
+                    element.ValueKind == JsonValueKind.Object &&
+                    element.TryGetProperty("value", out var valueProp) &&
+                    !string.IsNullOrWhiteSpace(valueProp.GetString()));
 
-            return string.IsNullOrEmpty(action) && string.IsNullOrEmpty(target) && constraintsEmpty;
+            return string.IsNullOrEmpty(action) && string.IsNullOrEmpty(target) && conditionsEmpty;
         }
         catch (JsonException)
         {

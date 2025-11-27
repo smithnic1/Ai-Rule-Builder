@@ -63,7 +63,7 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseCors(FrontendCorsPolicy);
 app.MapControllers().RequireCors(FrontendCorsPolicy);
-app.MapMethods("{*path}", new[] { HttpMethods.Options }, () => Results.Ok())
+app.MapMethods("{*path}", [HttpMethods.Options], () => Results.Ok())
    .RequireCors(FrontendCorsPolicy);
 
 app.Run();

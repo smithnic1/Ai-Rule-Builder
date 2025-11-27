@@ -32,5 +32,26 @@ public class RulePipelineController(AiService ai) : ControllerBase
         }
     }
 
+    [HttpPost("refine")]
+    public async Task<IActionResult> Refine([FromBody] InputDto? dto)
+    {
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Text))
+        {
+            return BadRequest("Text is required.");
+        }
+
+        try
+        {
+            var normalized = await _ai.RefineRuleJson(dto.Text);
+            using var doc = JsonDocument.Parse(normalized);
+            var payload = doc.RootElement.Clone();
+            return Ok(new { result = payload });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     public record InputDto(string Text);
 }

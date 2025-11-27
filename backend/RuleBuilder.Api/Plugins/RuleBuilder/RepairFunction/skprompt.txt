@@ -9,13 +9,24 @@ Return ONLY a corrected JSON object that follows this schema strictly:
 {
   "action": "string (use empty string if missing)",
   "target": "string (use empty string if missing)",
-  "constraints": ["string", ... zero or more items],
-  "timeRange": "string or null"
+  "conditions": [
+    {
+      "field": "string",
+      "operator": "string",
+      "value": "string"
+    }
+  ],
+  "timeRange": "string or null",
+  "priority": "integer",
+  "logic": "string (AND or OR)"
 }
 
 Rules:
 - Always return valid JSON without code fences, prefixes, or explanations.
-- If "constraints" is missing, return an empty array.
+- If "conditions" is missing, return an empty array.
 - If "timeRange" is unknown, return null.
+- If "priority" is missing, default to 1 and ensure it is an integer value.
+- If "logic" is missing, default to "AND" and ensure it is only "AND" or "OR".
+- Only allow condition operators from: equals, not_equals, contains, greater_than, less_than. Correct unknown operators if necessary.
 - Never add properties outside the schema.
 - Always use plain double quotes (") for JSON strings; never output HTML entities like &quot;.
