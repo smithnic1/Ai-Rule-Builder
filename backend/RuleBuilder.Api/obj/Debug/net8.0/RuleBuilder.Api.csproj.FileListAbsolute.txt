@@ -57,3 +57,4 @@
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RepairFunction/skprompt.txt
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/SchemaValidator/skprompt.txt
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RefinePrompt/skprompt.txt
+/workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RuleExplainer/skprompt.txt

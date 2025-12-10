@@ -1,5 +1,5 @@
-import { SyntheticEvent, useState } from 'react'
-import { Alert, Box, Button, Collapse, Paper, Snackbar, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { useState } from 'react'
+import { Alert, Box, Button, Collapse, Paper, Snackbar, Stack, Typography } from '@mui/material'
 import RuleInput from './RuleInput'
 import RulePreview from './RulePreview'
 import RuleHints from './RuleHints'
@@ -17,7 +17,10 @@ const API_URL_BASE = (() => {
 
 const RULE_PIPELINE_BASE_URL = `${API_URL_BASE}/api/rulepipeline`
 
-type EditorMode = 'natural' | 'json' | 'form'
+type RuleValidationResponse = {
+  valid: boolean
+  issues: string[]
+}
 
 const RuleBuilder = () => {
   const [input, setInput] = useState('')
@@ -26,16 +29,25 @@ const RuleBuilder = () => {
   const [refineError, setRefineError] = useState<string | null>(null)
   const [showExamples, setShowExamples] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
-  const [editorMode, setEditorMode] = useState<EditorMode>('natural')
+  const [validating, setValidating] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [validationResult, setValidationResult] = useState<RuleValidationResponse | null>(null)
+  const [explaining, setExplaining] = useState(false)
+  const [explainError, setExplainError] = useState<string | null>(null)
+  const [explanation, setExplanation] = useState<string | null>(null)
 
   const handleRuleGenerated = (next: RuleSchema) => {
-    setRule(next)
-    setRefineError(null)
+    handleRuleUpdated(next)
     setToastOpen(false)
   }
 
-  const handleEditorModeChange = (_: SyntheticEvent, value: string) => {
-    setEditorMode(value as EditorMode)
+  const handleRuleUpdated = (next: RuleSchema) => {
+    setRule(next)
+    setRefineError(null)
+    setValidationError(null)
+    setValidationResult(null)
+    setExplainError(null)
+    setExplanation(null)
   }
 
   const handleRefine = async () => {
@@ -72,6 +84,72 @@ const RuleBuilder = () => {
     }
   }
 
+  const handleValidate = async () => {
+    if (isRuleEmpty(rule)) {
+      setValidationError('Provide rule details before validating.')
+      setValidationResult(null)
+      return
+    }
+
+    setValidating(true)
+    setValidationError(null)
+
+    try {
+      const response = await fetch(`${RULE_PIPELINE_BASE_URL}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: JSON.stringify(rule, null, 2) })
+      })
+
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        throw new Error(message)
+      }
+
+      const parsed = (await response.json()) as RuleValidationResponse
+      setValidationResult(parsed)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error.'
+      setValidationError(message)
+      setValidationResult(null)
+    } finally {
+      setValidating(false)
+    }
+  }
+
+  const handleExplain = async () => {
+    if (isRuleEmpty(rule)) {
+      setExplainError('Provide rule details before requesting an explanation.')
+      setExplanation(null)
+      return
+    }
+
+    setExplaining(true)
+    setExplainError(null)
+
+    try {
+      const response = await fetch(`${RULE_PIPELINE_BASE_URL}/explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: JSON.stringify(rule, null, 2) })
+      })
+
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        throw new Error(message)
+      }
+
+      const data = (await response.json()) as { explanation: string }
+      setExplanation(data.explanation)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error.'
+      setExplainError(message)
+      setExplanation(null)
+    } finally {
+      setExplaining(false)
+    }
+  }
+
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', py: { xs: 3, md: 5 }, px: { xs: 2, md: 4 } }}>
       <Typography variant="overline" color="text.secondary">
@@ -87,30 +165,15 @@ const RuleBuilder = () => {
 
       <Stack spacing={3}>
         <Paper elevation={2} sx={{ padding: 3 }}>
-          <Tabs
-            value={editorMode}
-            onChange={handleEditorModeChange}
-            aria-label="Rule editing modes"
-            variant="scrollable"
-            allowScrollButtonsMobile
-          >
-            <Tab label="Natural language" value="natural" />
-            <Tab label="JSON editor" value="json" />
-            <Tab label="Form builder" value="form" />
-          </Tabs>
-          <Box sx={{ mt: 3 }}>
-            {editorMode === 'natural' && (
-              <RuleInput input={input} setInput={setInput} onRuleGenerated={handleRuleGenerated} />
-            )}
-            {editorMode === 'json' && <EditableJson rule={rule} onRuleChange={handleRuleGenerated} />}
-            {editorMode === 'form' && <RuleForm schema={rule} onSchemaChange={handleRuleGenerated} />}
-          </Box>
+          <RuleInput input={input} setInput={setInput} onRuleGenerated={handleRuleGenerated} />
         </Paper>
 
         <Paper elevation={2} sx={{ padding: 3 }}>
-          <Stack spacing={2}>
+          <Stack spacing={3}>
             <RulePreview rule={rule} />
-            <div>
+            <RuleForm rule={rule} setRule={handleRuleUpdated} />
+            <EditableJson rule={rule} onRuleChange={handleRuleUpdated} />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
               <Button
                 variant="contained"
                 color="secondary"
@@ -119,10 +182,55 @@ const RuleBuilder = () => {
               >
                 {refining ? 'Refining…' : 'Refine Rule'}
               </Button>
-            </div>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => void handleValidate()}
+                disabled={isRuleEmpty(rule) || validating}
+              >
+                {validating ? 'Validating…' : 'Validate Rule'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="info"
+                onClick={() => void handleExplain()}
+                disabled={isRuleEmpty(rule) || explaining}
+              >
+                {explaining ? 'Explaining…' : 'Explain Rule'}
+              </Button>
+            </Stack>
+            {validationResult && (
+              <Alert severity={validationResult.valid ? 'success' : 'warning'} onClose={() => setValidationResult(null)}>
+                {validationResult.valid ? 'Rule passes schema validation.' : 'Validation issues detected.'}
+                {!validationResult.valid && validationResult.issues.length > 0 && (
+                  <Stack component="ul" sx={{ pl: 2, mb: 0, mt: 1 }}>
+                    {validationResult.issues.map((issue) => (
+                      <Box key={issue} component="li" sx={{ fontSize: '0.875rem' }}>
+                        {issue}
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Alert>
+            )}
+            {validationError && (
+              <Alert severity="error" onClose={() => setValidationError(null)}>
+                {validationError}
+              </Alert>
+            )}
             {refineError && (
               <Alert severity="error" onClose={() => setRefineError(null)}>
                 {refineError}
+              </Alert>
+            )}
+            {explanation && (
+              <Alert severity="info" onClose={() => setExplanation(null)}>
+                {explanation}
+              </Alert>
+            )}
+            {explainError && (
+              <Alert severity="error" onClose={() => setExplainError(null)}>
+                {explainError}
               </Alert>
             )}
           </Stack>

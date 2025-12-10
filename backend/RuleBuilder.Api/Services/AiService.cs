@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
@@ -237,6 +238,72 @@ public class AiService
         return refined;
     }
 
+    public async Task<RuleValidationResult> ValidateRuleWithSk(string json, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new ArgumentException("JSON is required for validation.", nameof(json));
+        }
+
+        var function = _kernel.Plugins.GetFunction("RuleBuilder", "SchemaValidator");
+        var arguments = new KernelArguments { ["input"] = json };
+        var response = await _kernel.InvokeAsync(function, arguments, cancellationToken);
+        var payload = response?.ToString();
+
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return new RuleValidationResult(false, new[] { "Validator returned an empty response." });
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(payload);
+            var root = doc.RootElement;
+            var valid = root.TryGetProperty("valid", out var validElement) && validElement.GetBoolean();
+            var issues = new List<string>();
+
+            if (root.TryGetProperty("issues", out var issuesElement) && issuesElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var issue in issuesElement.EnumerateArray())
+                {
+                    if (issue.ValueKind == JsonValueKind.String)
+                    {
+                        var message = issue.GetString();
+                        if (!string.IsNullOrWhiteSpace(message))
+                        {
+                            issues.Add(message);
+                        }
+                    }
+                }
+            }
+
+            return new RuleValidationResult(valid, issues);
+        }
+        catch (JsonException)
+        {
+            return new RuleValidationResult(false, new[] { "Validator returned unparseable output." });
+        }
+    }
+
+    public async Task<string> ExplainRuleAsync(string json, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new ArgumentException("JSON is required for explanation.", nameof(json));
+        }
+
+        var function = _kernel.Plugins.GetFunction("RuleBuilder", "RuleExplainer");
+        var response = await _kernel.InvokeAsync(function, new KernelArguments { ["input"] = json }, cancellationToken);
+        var explanation = response?.ToString();
+
+        if (string.IsNullOrWhiteSpace(explanation))
+        {
+            throw new InvalidOperationException("Rule explanation returned no content.");
+        }
+
+        return explanation.Trim();
+    }
+
     private static string DecodeHtmlEntities(string value)
     {
         if (string.IsNullOrEmpty(value))
@@ -303,4 +370,5 @@ public class AiService
             return false;
         }
     }
+    public record RuleValidationResult(bool Valid, IReadOnlyList<string> Issues);
 }

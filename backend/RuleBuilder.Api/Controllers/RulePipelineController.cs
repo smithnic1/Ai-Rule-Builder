@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Threading;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RuleBuilder.Api.Services;
@@ -46,6 +47,44 @@ public class RulePipelineController(AiService ai) : ControllerBase
             using var doc = JsonDocument.Parse(normalized);
             var payload = doc.RootElement.Clone();
             return Ok(new { result = payload });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("validate")]
+    public async Task<IActionResult> Validate([FromBody] InputDto? dto, CancellationToken cancellationToken)
+    {
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Text))
+        {
+            return BadRequest("Text is required.");
+        }
+
+        try
+        {
+            var result = await _ai.ValidateRuleWithSk(dto.Text, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("explain")]
+    public async Task<IActionResult> Explain([FromBody] InputDto? dto, CancellationToken cancellationToken)
+    {
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Text))
+        {
+            return BadRequest("Text is required.");
+        }
+
+        try
+        {
+            var explanation = await _ai.ExplainRuleAsync(dto.Text, cancellationToken);
+            return Ok(new { explanation });
         }
         catch (Exception ex)
         {

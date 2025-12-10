@@ -1,37 +1,54 @@
-import { Divider, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Button, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import type { RuleSchema } from '../RuleBuilder/types'
 import ConditionEditor from './ConditionEditor'
+import { CONDITION_OPERATORS } from './constants'
 
 type RuleFormProps = {
-  schema: RuleSchema
-  onSchemaChange: (schema: RuleSchema) => void
+  rule: RuleSchema
+  setRule: (schema: RuleSchema) => void
 }
 
-const RuleForm = ({ schema, onSchemaChange }: RuleFormProps) => {
-  const handleTextChange = (field: keyof Pick<RuleSchema, 'action' | 'target' | 'timeRange'>, value: string) => {
-    onSchemaChange({
-      ...schema,
+const RuleForm = ({ rule, setRule }: RuleFormProps) => {
+  const handleFieldChange = (field: keyof Pick<RuleSchema, 'action' | 'target' | 'timeRange'>, value: string) => {
+    setRule({
+      ...rule,
       [field]: field === 'timeRange' ? (value.trim() ? value : null) : value
     })
   }
 
   const handlePriorityChange = (value: string) => {
     if (!value.trim()) {
-      onSchemaChange({ ...schema, priority: null })
+      setRule({ ...rule, priority: null })
       return
     }
 
     const numeric = Number(value)
-    onSchemaChange({ ...schema, priority: Number.isFinite(numeric) ? numeric : null })
+    setRule({ ...rule, priority: Number.isFinite(numeric) ? numeric : null })
   }
 
   const handleLogicChange = (value: string) => {
     const normalized = value === 'AND' || value === 'OR' ? value : ''
-    onSchemaChange({ ...schema, logic: normalized })
+    setRule({ ...rule, logic: normalized })
   }
 
-  const handleConditionsChange = (conditions: RuleSchema['conditions']) => {
-    onSchemaChange({ ...schema, conditions })
+  const addCondition = () => {
+    setRule({
+      ...rule,
+      conditions: [...rule.conditions, { field: '', operator: CONDITION_OPERATORS[0], value: '' }]
+    })
+  }
+
+  const updateCondition = (index: number, updated: RuleSchema['conditions'][number]) => {
+    const next = [...rule.conditions]
+    next[index] = updated
+    setRule({ ...rule, conditions: next })
+  }
+
+  const removeCondition = (index: number) => {
+    setRule({
+      ...rule,
+      conditions: rule.conditions.filter((_, currentIndex) => currentIndex !== index)
+    })
   }
 
   return (
@@ -48,16 +65,16 @@ const RuleForm = ({ schema, onSchemaChange }: RuleFormProps) => {
       <Stack spacing={2}>
         <TextField
           label="Action"
-          value={schema.action}
-          onChange={(event) => handleTextChange('action', event.target.value)}
+          value={rule.action}
+          onChange={(event) => handleFieldChange('action', event.target.value)}
           helperText="What should happen when all conditions are met?"
           fullWidth
         />
 
         <TextField
           label="Target"
-          value={schema.target}
-          onChange={(event) => handleTextChange('target', event.target.value)}
+          value={rule.target}
+          onChange={(event) => handleFieldChange('target', event.target.value)}
           helperText="Who or what does this rule apply to?"
           fullWidth
         />
@@ -65,7 +82,7 @@ const RuleForm = ({ schema, onSchemaChange }: RuleFormProps) => {
         <TextField
           label="Priority"
           type="number"
-          value={schema.priority ?? ''}
+          value={rule.priority ?? ''}
           onChange={(event) => handlePriorityChange(event.target.value)}
           helperText="Optional. Higher numbers can sort execution order."
           fullWidth
@@ -74,7 +91,7 @@ const RuleForm = ({ schema, onSchemaChange }: RuleFormProps) => {
         <TextField
           label="Logic"
           select
-          value={schema.logic || ''}
+          value={rule.logic || ''}
           onChange={(event) => handleLogicChange(event.target.value)}
           helperText="Choose how multiple conditions should be evaluated."
           fullWidth
@@ -85,8 +102,8 @@ const RuleForm = ({ schema, onSchemaChange }: RuleFormProps) => {
 
         <TextField
           label="Time Range"
-          value={schema.timeRange ?? ''}
-          onChange={(event) => handleTextChange('timeRange', event.target.value)}
+          value={rule.timeRange ?? ''}
+          onChange={(event) => handleFieldChange('timeRange', event.target.value)}
           helperText="Optional. Example: business hours, weekends, 8am-5pm UTC."
           fullWidth
         />
@@ -94,7 +111,23 @@ const RuleForm = ({ schema, onSchemaChange }: RuleFormProps) => {
 
       <Divider />
 
-      <ConditionEditor conditions={schema.conditions} onChange={handleConditionsChange} />
+      <div>
+        <Typography variant="subtitle1" gutterBottom>
+          Conditions
+        </Typography>
+        {rule.conditions.map((condition, index) => (
+          <ConditionEditor
+            key={`condition-${index}`}
+            condition={condition}
+            index={index}
+            updateCondition={updateCondition}
+            removeCondition={removeCondition}
+          />
+        ))}
+        <Button variant="outlined" color="secondary" sx={{ mt: 2 }} onClick={addCondition}>
+          Add Condition
+        </Button>
+      </div>
     </Stack>
   )
 }

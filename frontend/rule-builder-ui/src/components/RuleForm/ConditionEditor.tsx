@@ -1,77 +1,85 @@
-import { Button, Stack, TextField, Typography } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/Delete'
+import Autocomplete from '@mui/material/Autocomplete'
+import { Grid, IconButton, MenuItem, Paper, TextField } from '@mui/material'
 import type { RuleCondition } from '../RuleBuilder/types'
+import {
+  CONDITION_FIELD_SUGGESTIONS,
+  CONDITION_OPERATORS,
+  OPERATOR_DESCRIPTIONS,
+  type ConditionOperator
+} from './constants'
 
 type ConditionEditorProps = {
-  conditions: RuleCondition[]
-  onChange: (value: RuleCondition[]) => void
+  condition: RuleCondition
+  index: number
+  updateCondition: (index: number, value: RuleCondition) => void
+  removeCondition: (index: number) => void
 }
 
-const ConditionEditor = ({ conditions, onChange }: ConditionEditorProps) => {
-  const handleConditionChange = (index: number, field: keyof RuleCondition, value: string) => {
-    const draft = [...conditions]
-    draft[index] = {
-      ...draft[index],
-      [field]: value
-    }
-    onChange(draft)
-  }
-
-  const removeCondition = (index: number) => {
-    onChange(conditions.filter((_, currentIndex) => currentIndex !== index))
-  }
-
-  const addCondition = () => {
-    onChange([...conditions, { field: '', operator: '', value: '' }])
+const ConditionEditor = ({ condition, index, updateCondition, removeCondition }: ConditionEditorProps) => {
+  const handleUpdate = (name: keyof RuleCondition, value: string) => {
+    updateCondition(index, { ...condition, [name]: value })
   }
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle1">Conditions</Typography>
-
-      {conditions.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Add conditions to describe filters like location, availability, or certifications.
-        </Typography>
-      ) : (
-        conditions.map((condition, index) => (
-          <Stack key={`condition-${index}`} spacing={1}>
-            <Typography variant="subtitle2">Condition {index + 1}</Typography>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+    <Paper sx={{ padding: 2, mt: 2 }}>
+      <Grid container spacing={2} alignItems="center">
+        <Grid item xs={12} md={4}>
+          <Autocomplete
+            freeSolo
+            options={CONDITION_FIELD_SUGGESTIONS}
+            value={condition.field}
+            inputValue={condition.field}
+            onInputChange={(_, value) => handleUpdate('field', value)}
+            onChange={(_, value) => handleUpdate('field', typeof value === 'string' ? value : '')}
+            renderInput={(params) => (
               <TextField
+                {...params}
                 label="Field"
-                value={condition.field}
-                onChange={(event) => handleConditionChange(index, 'field', event.target.value)}
                 fullWidth
+                helperText="Start typing to pick a common field or add your own."
               />
-              <TextField
-                label="Operator"
-                value={condition.operator}
-                onChange={(event) => handleConditionChange(index, 'operator', event.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Value"
-                value={condition.value}
-                onChange={(event) => handleConditionChange(index, 'value', event.target.value)}
-                fullWidth
-              />
-            </Stack>
-            <Button
-              variant="text"
-              color="error"
-              onClick={() => removeCondition(index)}
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Remove condition
-            </Button>
-          </Stack>
-        ))
-      )}
+            )}
+          />
+        </Grid>
 
-      <Button variant="outlined" color="secondary" onClick={addCondition} sx={{ alignSelf: 'flex-start' }}>
-        Add Condition
-      </Button>
-    </Stack>
+        <Grid item xs={12} md={4}>
+          <TextField
+            label="Operator"
+            select
+            fullWidth
+            value={condition.operator}
+            onChange={(event) => handleUpdate('operator', event.target.value)}
+            helperText={
+              (condition.operator
+                ? OPERATOR_DESCRIPTIONS[condition.operator as ConditionOperator]
+                : undefined) || 'Select how this field should be compared.'
+            }
+          >
+            {CONDITION_OPERATORS.map((operator) => (
+              <MenuItem key={operator} value={operator}>
+                {operator}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+
+        <Grid item xs={10} md={3}>
+          <TextField
+            label="Value"
+            fullWidth
+            value={condition.value}
+            onChange={(event) => handleUpdate('value', event.target.value)}
+          />
+        </Grid>
+
+        <Grid item xs={2} md={1}>
+          <IconButton color="error" onClick={() => removeCondition(index)} aria-label="Remove condition">
+            <DeleteIcon />
+          </IconButton>
+        </Grid>
+      </Grid>
+    </Paper>
   )
 }
 

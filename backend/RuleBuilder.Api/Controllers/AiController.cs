@@ -5,14 +5,9 @@ namespace RuleBuilder.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AiController : ControllerBase
+public class AiController(AiService aiService) : ControllerBase
 {
-    private readonly AiService _aiService;
-
-    public AiController(AiService aiService)
-    {
-        _aiService = aiService;
-    }
+    private readonly AiService _aiService = aiService;
 
     [HttpPost("ask")]
     public async Task<IActionResult> Ask([FromBody] PromptDto dto, CancellationToken cancellationToken)
