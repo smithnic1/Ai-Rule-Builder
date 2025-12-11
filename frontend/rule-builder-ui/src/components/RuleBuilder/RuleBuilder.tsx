@@ -32,6 +32,7 @@ const RuleBuilder = () => {
   const [validating, setValidating] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [validationResult, setValidationResult] = useState<RuleValidationResponse | null>(null)
+  const [validationIssues, setValidationIssues] = useState<string[]>([])
   const [explaining, setExplaining] = useState(false)
   const [explainError, setExplainError] = useState<string | null>(null)
   const [explanation, setExplanation] = useState<string | null>(null)
@@ -46,6 +47,7 @@ const RuleBuilder = () => {
     setRefineError(null)
     setValidationError(null)
     setValidationResult(null)
+    setValidationIssues([])
     setExplainError(null)
     setExplanation(null)
   }
@@ -88,11 +90,13 @@ const RuleBuilder = () => {
     if (isRuleEmpty(rule)) {
       setValidationError('Provide rule details before validating.')
       setValidationResult(null)
+      setValidationIssues([])
       return
     }
 
     setValidating(true)
     setValidationError(null)
+    setValidationIssues([])
 
     try {
       const response = await fetch(`${RULE_PIPELINE_BASE_URL}/validate`, {
@@ -107,11 +111,18 @@ const RuleBuilder = () => {
       }
 
       const parsed = (await response.json()) as RuleValidationResponse
-      setValidationResult(parsed)
+      if (parsed.valid) {
+        setValidationResult(parsed)
+        setValidationIssues([])
+      } else {
+        setValidationResult(null)
+        setValidationIssues(parsed.issues ?? [])
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error.'
       setValidationError(message)
       setValidationResult(null)
+      setValidationIssues([])
     } finally {
       setValidating(false)
     }
@@ -199,18 +210,18 @@ const RuleBuilder = () => {
                 {explaining ? 'Explaining…' : 'Explain Rule'}
               </Button>
             </Stack>
-            {validationResult && (
-              <Alert severity={validationResult.valid ? 'success' : 'warning'} onClose={() => setValidationResult(null)}>
-                {validationResult.valid ? 'Rule passes schema validation.' : 'Validation issues detected.'}
-                {!validationResult.valid && validationResult.issues.length > 0 && (
-                  <Stack component="ul" sx={{ pl: 2, mb: 0, mt: 1 }}>
-                    {validationResult.issues.map((issue) => (
-                      <Box key={issue} component="li" sx={{ fontSize: '0.875rem' }}>
-                        {issue}
-                      </Box>
-                    ))}
-                  </Stack>
-                )}
+            {validationResult && validationResult.valid && (
+              <Alert severity="success" onClose={() => setValidationResult(null)}>
+                Rule passes schema validation.
+              </Alert>
+            )}
+            {validationIssues.length > 0 && (
+              <Alert severity="error" onClose={() => setValidationIssues([])}>
+                {validationIssues.map((issue) => (
+                  <Box key={issue} sx={{ fontSize: '0.875rem' }}>
+                    {issue}
+                  </Box>
+                ))}
               </Alert>
             )}
             {validationError && (

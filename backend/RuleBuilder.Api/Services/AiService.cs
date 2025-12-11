@@ -304,6 +304,24 @@ public class AiService
         return explanation.Trim();
     }
 
+    public async Task<string> AssistRuleJson(string json)
+    {
+        var result = await _kernel.InvokeAsync("RuleBuilder", "AiAssistPrompt",
+            new() { ["input"] = json });
+
+        var improved = result.GetValue<string>()!;
+
+        // Self-repair and validation:
+        improved = await NormalizeRuleJson(improved);
+
+        var valid = await ValidateRuleJson(improved);
+        if (!valid)
+            throw new Exception("Result failed validation");
+
+        return improved;
+    }
+
+
     private static string DecodeHtmlEntities(string value)
     {
         if (string.IsNullOrEmpty(value))

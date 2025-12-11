@@ -51,6 +51,53 @@ const RuleForm = ({ rule, setRule }: RuleFormProps) => {
     })
   }
 
+  const suggestValueForCondition = async (index: number) => {
+    const ruleMinusCond = { ...rule }
+    const condition = ruleMinusCond.conditions[index]
+
+    if (!condition) {
+      return
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rulepipeline/assist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: JSON.stringify(condition) })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Condition suggestion failed with status ${response.status}`)
+      }
+
+      const data: { result: string } = await response.json()
+      const suggestion = JSON.parse(data.result) as RuleSchema['conditions'][number]
+      updateCondition(index, suggestion)
+    } catch (error) {
+      console.error('Condition suggestion failed', error)
+    }
+  }
+
+  const handleAiAssist = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rulepipeline/assist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: JSON.stringify(rule) })
+      })
+
+      if (!response.ok) {
+        throw new Error(`AI assist failed with status ${response.status}`)
+      }
+
+      const data: { result: string } = await response.json()
+      const updated = JSON.parse(data.result) as RuleSchema
+      setRule(updated)
+    } catch (error) {
+      console.error('AI Assist failed', error)
+    }
+  }
+
   return (
     <Stack spacing={3}>
       <div>
@@ -122,10 +169,14 @@ const RuleForm = ({ rule, setRule }: RuleFormProps) => {
             index={index}
             updateCondition={updateCondition}
             removeCondition={removeCondition}
+            suggestValueForCondition={suggestValueForCondition}
           />
         ))}
         <Button variant="outlined" color="secondary" sx={{ mt: 2 }} onClick={addCondition}>
           Add Condition
+        </Button>
+        <Button variant="contained" color="secondary" sx={{ mt: 2 }} onClick={handleAiAssist}>
+          AI Assist / Complete Rule
         </Button>
       </div>
     </Stack>

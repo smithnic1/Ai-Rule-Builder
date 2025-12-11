@@ -1,6 +1,6 @@
 import DeleteIcon from '@mui/icons-material/Delete'
 import Autocomplete from '@mui/material/Autocomplete'
-import { Grid, IconButton, MenuItem, Paper, TextField } from '@mui/material'
+import { Button, Grid, IconButton, MenuItem, Paper, TextField } from '@mui/material'
 import type { RuleCondition } from '../RuleBuilder/types'
 import {
   CONDITION_FIELD_SUGGESTIONS,
@@ -14,9 +14,16 @@ type ConditionEditorProps = {
   index: number
   updateCondition: (index: number, value: RuleCondition) => void
   removeCondition: (index: number) => void
+  suggestValueForCondition: (index: number) => void
 }
 
-const ConditionEditor = ({ condition, index, updateCondition, removeCondition }: ConditionEditorProps) => {
+const ConditionEditor = ({
+  condition,
+  index,
+  updateCondition,
+  removeCondition,
+  suggestValueForCondition
+}: ConditionEditorProps) => {
   const handleUpdate = (name: keyof RuleCondition, value: string) => {
     updateCondition(index, { ...condition, [name]: value })
   }
@@ -71,6 +78,9 @@ const ConditionEditor = ({ condition, index, updateCondition, removeCondition }:
             value={condition.value}
             onChange={(event) => handleUpdate('value', event.target.value)}
           />
+          <Button variant="text" size="small" onClick={() => suggestValueForCondition(index)} sx={{ mt: 1 }}>
+            Suggest
+          </Button>
         </Grid>
 
         <Grid item xs={2} md={1}>

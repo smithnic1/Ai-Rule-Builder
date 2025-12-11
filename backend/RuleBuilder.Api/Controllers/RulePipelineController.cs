@@ -92,5 +92,12 @@ public class RulePipelineController(AiService ai) : ControllerBase
         }
     }
 
+    [HttpPost("assist")]
+    public async Task<IActionResult> Assist([FromBody] InputDto dto)
+    {
+        var result = await _ai.AssistRuleJson(dto.Text);
+        return Ok(new { result });
+    }
+
     public record InputDto(string Text);
 }
