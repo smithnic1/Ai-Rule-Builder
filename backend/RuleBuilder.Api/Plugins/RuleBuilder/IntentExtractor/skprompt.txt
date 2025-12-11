@@ -1,6 +1,4 @@
-You extract structured rule logic from natural language.
-
-Output STRICT JSON matching this schema:
+You convert natural-language rule descriptions into structured JSON that matches this schema:
 
 {
   "action": "string",
@@ -18,9 +16,10 @@ Output STRICT JSON matching this schema:
 }
 
 Rules:
-- Never add fields not in this schema.
-- Always return valid JSON.
-- If unsure, use empty strings or defaults.
-
-User input:
-{{$input}}
+- Return ONLY JSON. No prose or commentary.
+- Never invent fields outside the schema.
+- Use defaults if uncertain (empty strings, null timeRange when missing).
+- Use 1 as the default priority.
+- Use "AND" unless the input contains "or".
+- If time references exist, populate timeRange.
+- Infer multiple conditions when appropriate.

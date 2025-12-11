@@ -99,5 +99,12 @@ public class RulePipelineController(AiService ai) : ControllerBase
         return Ok(new { result });
     }
 
+    [HttpPost("fromtext")]
+    public async Task<IActionResult> FromText([FromBody] InputDto dto)
+    {
+        var result = await _ai.ExtractRulePipeline(dto.Text);
+        return Ok(new { result });
+    }
+
     public record InputDto(string Text);
 }

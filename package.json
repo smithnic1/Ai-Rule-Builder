@@ -12,6 +12,7 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
+    "@mui/material": "^7.3.6",
     "react-json-view-lite": "^2.5.0"
   }
 }

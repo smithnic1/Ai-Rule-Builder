@@ -1,6 +1,7 @@
 import DeleteIcon from '@mui/icons-material/Delete'
 import Autocomplete from '@mui/material/Autocomplete'
-import { Button, Grid, IconButton, MenuItem, Paper, TextField } from '@mui/material'
+import { Button, IconButton, MenuItem, Paper, TextField } from '@mui/material'
+import Grid from '@mui/material/Grid'
 import type { RuleCondition } from '../RuleBuilder/types'
 import {
   CONDITION_FIELD_SUGGESTIONS,
@@ -14,7 +15,7 @@ type ConditionEditorProps = {
   index: number
   updateCondition: (index: number, value: RuleCondition) => void
   removeCondition: (index: number) => void
-  suggestValueForCondition: (index: number) => void
+  suggestValueForCondition: (index: number) => Promise<void>
 }
 
 const ConditionEditor = ({
@@ -31,7 +32,7 @@ const ConditionEditor = ({
   return (
     <Paper sx={{ padding: 2, mt: 2 }}>
       <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Autocomplete
             freeSolo
             options={CONDITION_FIELD_SUGGESTIONS}
@@ -50,7 +51,7 @@ const ConditionEditor = ({
           />
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             label="Operator"
             select
@@ -71,19 +72,19 @@ const ConditionEditor = ({
           </TextField>
         </Grid>
 
-        <Grid item xs={10} md={3}>
+        <Grid size={{ xs: 10, md: 3 }}>
           <TextField
             label="Value"
             fullWidth
             value={condition.value}
             onChange={(event) => handleUpdate('value', event.target.value)}
           />
-          <Button variant="text" size="small" onClick={() => suggestValueForCondition(index)} sx={{ mt: 1 }}>
+          <Button variant="text" size="small" onClick={() => void suggestValueForCondition(index)} sx={{ mt: 1 }}>
             Suggest
           </Button>
         </Grid>
 
-        <Grid item xs={2} md={1}>
+        <Grid size={{ xs: 2, md: 1 }}>
           <IconButton color="error" onClick={() => removeCondition(index)} aria-label="Remove condition">
             <DeleteIcon />
           </IconButton>

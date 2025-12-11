@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Alert, Box, Button, Collapse, Paper, Snackbar, Stack, Typography } from '@mui/material'
+import { useEffect, useRef, useState } from 'react'
+import { Alert, Box, Button, Collapse, Paper, Snackbar, Stack, TextField, Typography } from '@mui/material'
 import RuleInput from './RuleInput'
 import RulePreview from './RulePreview'
 import RuleHints from './RuleHints'
@@ -24,6 +24,7 @@ type RuleValidationResponse = {
 
 const RuleBuilder = () => {
   const [input, setInput] = useState('')
+  const [nlInput, setNlInput] = useState('')
   const [rule, setRule] = useState<RuleSchema>(() => createEmptyRule())
   const [refining, setRefining] = useState(false)
   const [refineError, setRefineError] = useState<string | null>(null)
@@ -36,10 +37,56 @@ const RuleBuilder = () => {
   const [explaining, setExplaining] = useState(false)
   const [explainError, setExplainError] = useState<string | null>(null)
   const [explanation, setExplanation] = useState<string | null>(null)
+  const [naturalLanguageError, setNaturalLanguageError] = useState<string | null>(null)
+  const [naturalLanguageLoading, setNaturalLanguageLoading] = useState(false)
+  const scrollToFormOnUpdate = useRef(false)
+  const ruleIncomplete = !rule.action?.trim()
+
+  useEffect(() => {
+    if (scrollToFormOnUpdate.current && !isRuleEmpty(rule)) {
+      document.getElementById('rule-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      scrollToFormOnUpdate.current = false
+    }
+  }, [rule])
 
   const handleRuleGenerated = (next: RuleSchema) => {
+    scrollToFormOnUpdate.current = true
     handleRuleUpdated(next)
     setToastOpen(false)
+  }
+
+  const handleNaturalLanguageGenerate = async () => {
+    const prompt = nlInput.trim()
+    if (!prompt) {
+      return
+    }
+
+    setNaturalLanguageLoading(true)
+    setNaturalLanguageError(null)
+
+    try {
+      const response = await fetch(`${RULE_PIPELINE_BASE_URL}/fromtext`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: prompt })
+      })
+
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        throw new Error(message)
+      }
+
+      const data = (await response.json()) as { result: string }
+      const obj = JSON.parse(data.result)
+      const normalized = normalizeRuleSchema(obj)
+      scrollToFormOnUpdate.current = true
+      handleRuleUpdated(normalized)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error.'
+      setNaturalLanguageError(message)
+    } finally {
+      setNaturalLanguageLoading(false)
+    }
   }
 
   const handleRuleUpdated = (next: RuleSchema) => {
@@ -179,8 +226,35 @@ const RuleBuilder = () => {
           <RuleInput input={input} setInput={setInput} onRuleGenerated={handleRuleGenerated} />
         </Paper>
 
-        <Paper elevation={2} sx={{ padding: 3 }}>
+        <Paper id="rule-form" elevation={2} sx={{ padding: 3 }}>
           <Stack spacing={3}>
+            <Stack spacing={1}>
+              <Typography variant="h6">Natural Language Input Bar</Typography>
+              <TextField
+                label="Describe a rule in natural language"
+                multiline
+                minRows={3}
+                fullWidth
+                value={nlInput}
+                onChange={(event) => setNlInput(event.target.value)}
+              />
+              <Button
+                variant="contained"
+                sx={{ mt: 1, alignSelf: 'flex-start' }}
+                onClick={() => void handleNaturalLanguageGenerate()}
+                disabled={!nlInput.trim() || naturalLanguageLoading}
+              >
+                {naturalLanguageLoading ? 'Generating…' : 'Generate Rule From Description'}
+              </Button>
+              {naturalLanguageError && (
+                <Alert severity="error" onClose={() => setNaturalLanguageError(null)}>
+                  {naturalLanguageError}
+                </Alert>
+              )}
+            </Stack>
+            {ruleIncomplete && (
+              <Alert severity="warning">Rule is incomplete — try adding more detail.</Alert>
+            )}
             <RulePreview rule={rule} />
             <RuleForm rule={rule} setRule={handleRuleUpdated} />
             <EditableJson rule={rule} onRuleChange={handleRuleUpdated} />
