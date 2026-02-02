@@ -23,3 +23,27 @@ Rules:
 - Use "AND" unless the input contains "or".
 - If time references exist, populate timeRange.
 - Infer multiple conditions when appropriate.
+- Always infer a non-empty action (grant, deny, notify, schedule, contact, apply_policy if unclear).
+- Always set a concrete target for who/what the rule applies to (people, crew, employee, system, etc.).
+- Derive conditions for any qualifiers (if/when/with/where/during). When a day of week is mentioned, add a condition like {"field": "day_of_week", "operator": "equals", "value": "monday"}.
+- Capture numeric thresholds (e.g., "more than 40 hours") as conditions with greater_than / less_than operators.
+
+Example:
+Input: People who sail on Monday and work more than 40 hours get Friday off.
+Output:
+{
+  "action": "grant_time_off",
+  "target": "people",
+  "priority": 1,
+  "logic": "AND",
+  "timeRange": null,
+  "conditions": [
+    { "field": "day_of_week", "operator": "equals", "value": "monday" },
+    { "field": "hours_worked", "operator": "greater_than", "value": "40" }
+  ]
+}
+
+Input text:
+{{$input}}
+
+Return only the JSON object for the rule described above.

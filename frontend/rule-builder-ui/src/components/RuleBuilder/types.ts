@@ -37,10 +37,14 @@ export const normalizeRuleSchema = (value: unknown): RuleSchema => {
   }
 
   if (value && typeof value === 'object') {
-    const candidate = value as Partial<RuleSchema> & { rules?: unknown }
+    const candidate = toCaseInsensitiveRecord(value)
+    if (!candidate) {
+      throw new Error('Unable to normalize rule JSON.')
+    }
 
-    if (Array.isArray(candidate.rules) && candidate.rules.length > 0) {
-      return normalizeRuleSchema(candidate.rules[0])
+    const rulesPayload = candidate.rules
+    if (Array.isArray(rulesPayload) && rulesPayload.length > 0) {
+      return normalizeRuleSchema(rulesPayload[0])
     }
 
     const normalizedConditions = Array.isArray(candidate.conditions)
@@ -49,30 +53,32 @@ export const normalizeRuleSchema = (value: unknown): RuleSchema => {
           .filter((condition): condition is RuleCondition => condition !== null)
       : []
 
+    const timeRangeValue = candidate.timerange
     const timeRange =
-      typeof candidate.timeRange === 'string' && candidate.timeRange.trim().length > 0
-        ? candidate.timeRange
-        : null
+      typeof timeRangeValue === 'string' && timeRangeValue.trim().length > 0 ? timeRangeValue : null
 
+    const priorityValue = candidate.priority
     const priorityFromString =
-      typeof candidate.priority === 'string' && candidate.priority.trim().length > 0
-        ? Number(candidate.priority)
-        : null
+      typeof priorityValue === 'string' && priorityValue.trim().length > 0 ? Number(priorityValue) : null
     const parsedPriority =
-      typeof candidate.priority === 'number'
-        ? candidate.priority
+      typeof priorityValue === 'number'
+        ? priorityValue
         : priorityFromString !== null && Number.isFinite(priorityFromString)
         ? priorityFromString
         : null
 
+    const logicValue = candidate.logic
     const logic =
-      typeof candidate.logic === 'string'
-        ? (candidate.logic.toUpperCase() as RuleSchema['logic'])
+      typeof logicValue === 'string'
+        ? (logicValue.toUpperCase() as RuleSchema['logic'])
         : ('AND' as RuleSchema['logic'])
 
+    const actionValue = candidate.action
+    const targetValue = candidate.target
+
     return {
-      action: typeof candidate.action === 'string' ? candidate.action : '',
-      target: typeof candidate.target === 'string' ? candidate.target : '',
+      action: typeof actionValue === 'string' ? actionValue : '',
+      target: typeof targetValue === 'string' ? targetValue : '',
       conditions: normalizedConditions,
       timeRange,
       priority: parsedPriority,
@@ -84,15 +90,17 @@ export const normalizeRuleSchema = (value: unknown): RuleSchema => {
 }
 
 const normalizeCondition = (value: unknown): RuleCondition | null => {
-  if (!value || typeof value !== 'object') {
+  const candidate = toCaseInsensitiveRecord(value)
+  if (!candidate) {
     return null
   }
 
-  const candidate = value as Partial<RuleCondition>
-
-  const field = typeof candidate.field === 'string' ? candidate.field : ''
-  const operator = typeof candidate.operator === 'string' ? candidate.operator : ''
-  const normalizedValue = typeof candidate.value === 'string' ? candidate.value : ''
+  const fieldValue = candidate.field
+  const operatorValue = candidate.operator
+  const compareValue = candidate.value
+  const field = typeof fieldValue === 'string' ? fieldValue : ''
+  const operator = typeof operatorValue === 'string' ? operatorValue : ''
+  const normalizedValue = typeof compareValue === 'string' ? compareValue : ''
 
   if (!field && !operator && !normalizedValue) {
     return null
@@ -103,4 +111,18 @@ const normalizeCondition = (value: unknown): RuleCondition | null => {
     operator,
     value: normalizedValue
   }
+}
+
+const toCaseInsensitiveRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const normalized: Record<string, unknown> = {}
+
+  for (const [key, entryValue] of Object.entries(value as Record<string, unknown>)) {
+    normalized[key.toLowerCase()] = entryValue
+  }
+
+  return normalized
 }

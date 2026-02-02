@@ -99,6 +99,34 @@ public class RulePipelineController(AiService ai) : ControllerBase
         return Ok(new { result });
     }
 
+    [HttpPost("extract-multiple")]
+    public async Task<IActionResult> ExtractMultiple([FromBody] InputDto dto)
+    {
+        var result = await _ai.ExtractMultipleRules(dto.Text);
+        return Ok(new { result });
+    }
+
+    [HttpPost("cluster")]
+    public async Task<IActionResult> Cluster([FromBody] InputDto? dto, CancellationToken cancellationToken)
+    {
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Text))
+        {
+            return BadRequest("Rules payload is required.");
+        }
+
+        try
+        {
+            var clustered = await _ai.ClusterRules(dto.Text, cancellationToken);
+            using var doc = JsonDocument.Parse(clustered);
+            var payload = doc.RootElement.Clone();
+            return Ok(new { result = payload });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
+        }
+    }
+
     [HttpPost("fromtext")]
     public async Task<IActionResult> FromText([FromBody] InputDto dto)
     {

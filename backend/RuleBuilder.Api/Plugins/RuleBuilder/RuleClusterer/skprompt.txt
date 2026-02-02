@@ -1,0 +1,17 @@
+Group the following rules into thematic clusters.
+Clusters should be based on:
+- Similar action or target
+- Related conditions
+- Shared scheduling logic
+- Similar context (timeRange, priority)
+
+Return JSON:
+
+{
+  "clusters": [
+    {
+      "name": "string",
+      "rules": [ ... rule objects ... ]
+    }
+  ]
+}

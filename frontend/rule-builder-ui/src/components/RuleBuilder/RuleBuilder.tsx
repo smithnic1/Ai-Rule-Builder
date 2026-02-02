@@ -5,6 +5,7 @@ import RulePreview from './RulePreview'
 import RuleHints from './RuleHints'
 import EditableJson from './EditableJson'
 import RuleForm from '../RuleForm/RuleForm'
+import RuleList from './RuleList'
 import { createEmptyRule, isRuleEmpty, normalizeRuleSchema, type RuleSchema } from './types'
 
 const API_URL_BASE = (() => {
@@ -25,7 +26,7 @@ type RuleValidationResponse = {
 const RuleBuilder = () => {
   const [input, setInput] = useState('')
   const [nlInput, setNlInput] = useState('')
-  const [rule, setRule] = useState<RuleSchema>(() => createEmptyRule())
+  const [rule, setRuleObj] = useState<RuleSchema>(() => createEmptyRule())
   const [refining, setRefining] = useState(false)
   const [refineError, setRefineError] = useState<string | null>(null)
   const [showExamples, setShowExamples] = useState(false)
@@ -39,8 +40,15 @@ const RuleBuilder = () => {
   const [explanation, setExplanation] = useState<string | null>(null)
   const [naturalLanguageError, setNaturalLanguageError] = useState<string | null>(null)
   const [naturalLanguageLoading, setNaturalLanguageLoading] = useState(false)
+  const [rules, setRules] = useState<RuleSchema[]>([])
+  const [selectedRule, setSelectedRule] = useState<RuleSchema | null>(null)
+  const [multiRulesError, setMultiRulesError] = useState<string | null>(null)
+  const [multiRulesLoading, setMultiRulesLoading] = useState(false)
+  const [clusterResult, setClusterResult] = useState<string | null>(null)
+  const [clusterError, setClusterError] = useState<string | null>(null)
+  const [clusterLoading, setClusterLoading] = useState(false)
   const scrollToFormOnUpdate = useRef(false)
-  const ruleIncomplete = !rule.action?.trim()
+  const ruleIncomplete = !isRuleEmpty(rule) && !rule.action?.trim()
 
   useEffect(() => {
     if (scrollToFormOnUpdate.current && !isRuleEmpty(rule)) {
@@ -51,6 +59,7 @@ const RuleBuilder = () => {
 
   const handleRuleGenerated = (next: RuleSchema) => {
     scrollToFormOnUpdate.current = true
+    setSelectedRule(next)
     handleRuleUpdated(next)
     setToastOpen(false)
   }
@@ -89,8 +98,105 @@ const RuleBuilder = () => {
     }
   }
 
+  const handleExtractMultipleRules = async () => {
+    const prompt = nlInput.trim()
+    if (!prompt) {
+      return
+    }
+
+    setMultiRulesLoading(true)
+    setMultiRulesError(null)
+    setClusterResult(null)
+    setClusterError(null)
+
+    try {
+      const response = await fetch(`${RULE_PIPELINE_BASE_URL}/extract-multiple`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: prompt })
+      })
+
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        throw new Error(message)
+      }
+
+      const data = (await response.json()) as { result: unknown }
+      const payload = typeof data.result === 'string' ? JSON.parse(data.result) : data.result
+
+      if (!payload || typeof payload !== 'object' || !Array.isArray((payload as { rules?: unknown[] }).rules)) {
+        throw new Error('Extractor returned no rules.')
+      }
+
+      const normalizedRules = (payload as { rules: unknown[] }).rules
+        .map((entry) => {
+          try {
+            const materialized = typeof entry === 'string' ? JSON.parse(entry) : entry
+            return normalizeRuleSchema(materialized)
+          } catch {
+            return null
+          }
+        })
+        .filter((value): value is RuleSchema => value !== null)
+
+      if (!normalizedRules.length) {
+        throw new Error('No usable rules were extracted.')
+      }
+
+      setRules(normalizedRules)
+      setSelectedRule(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error.'
+      setMultiRulesError(message)
+      setRules([])
+    } finally {
+      setMultiRulesLoading(false)
+    }
+  }
+
+  const handleClusterRules = async () => {
+    if (!rules.length) {
+      setClusterError('Extract multiple rules before clustering.')
+      return
+    }
+
+    setClusterLoading(true)
+    setClusterError(null)
+
+    try {
+      const response = await fetch(`${RULE_PIPELINE_BASE_URL}/cluster`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: JSON.stringify({ rules }, null, 2) })
+      })
+
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        throw new Error(message)
+      }
+
+      const data = (await response.json()) as { result: unknown }
+      let formatted: string
+
+      if (typeof data.result === 'string') {
+        const raw = data.result.trim()
+        formatted = JSON.stringify(JSON.parse(raw), null, 2)
+      } else {
+        formatted = JSON.stringify(data.result, null, 2)
+      }
+
+      setClusterResult(formatted)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error.'
+      setClusterError(message)
+      setClusterResult(null)
+    } finally {
+      setClusterLoading(false)
+    }
+  }
+
   const handleRuleUpdated = (next: RuleSchema) => {
-    setRule(next)
+    setRuleObj(next)
     setRefineError(null)
     setValidationError(null)
     setValidationResult(null)
@@ -123,7 +229,7 @@ const RuleBuilder = () => {
       const data = (await response.json()) as { result: unknown }
       const normalized = normalizeRuleSchema(data.result)
 
-      setRule(normalized)
+      setRuleObj(normalized)
       setToastOpen(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error.'
@@ -238,18 +344,71 @@ const RuleBuilder = () => {
                 value={nlInput}
                 onChange={(event) => setNlInput(event.target.value)}
               />
-              <Button
-                variant="contained"
-                sx={{ mt: 1, alignSelf: 'flex-start' }}
-                onClick={() => void handleNaturalLanguageGenerate()}
-                disabled={!nlInput.trim() || naturalLanguageLoading}
-              >
-                {naturalLanguageLoading ? 'Generating…' : 'Generate Rule From Description'}
-              </Button>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 1 }}>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleNaturalLanguageGenerate()}
+                  disabled={!nlInput.trim() || naturalLanguageLoading}
+                >
+                  {naturalLanguageLoading ? 'Generating…' : 'Generate Rule From Description'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="info"
+                  onClick={() => void handleExtractMultipleRules()}
+                  disabled={!nlInput.trim() || multiRulesLoading}
+                >
+                  {multiRulesLoading ? 'Extracting…' : 'Extract Multiple Rules'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => void handleClusterRules()}
+                  disabled={rules.length === 0 || clusterLoading}
+                >
+                  {clusterLoading ? 'Clustering…' : 'Cluster Rules'}
+                </Button>
+              </Stack>
               {naturalLanguageError && (
                 <Alert severity="error" onClose={() => setNaturalLanguageError(null)}>
                   {naturalLanguageError}
                 </Alert>
+              )}
+              {multiRulesError && (
+                <Alert severity="error" onClose={() => setMultiRulesError(null)}>
+                  {multiRulesError}
+                </Alert>
+              )}
+              {clusterError && (
+                <Alert severity="error" onClose={() => setClusterError(null)}>
+                  {clusterError}
+                </Alert>
+              )}
+              {rules.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <RuleList rules={rules} selectedRule={selectedRule} onSelect={handleRuleGenerated} />
+                  <Typography variant="body2" color="text.secondary">
+                    Select a rule to load it into the editor.
+                  </Typography>
+                </Paper>
+              )}
+              {clusterResult && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Clustered Rules
+                  </Typography>
+                  <Box
+                    component="pre"
+                    sx={{
+                      whiteSpace: 'pre-wrap',
+                      maxHeight: 240,
+                      overflowY: 'auto',
+                      fontSize: '0.85rem',
+                      m: 0
+                    }}
+                  >
+                    {clusterResult}
+                  </Box>
+                </Paper>
               )}
             </Stack>
             {ruleIncomplete && (

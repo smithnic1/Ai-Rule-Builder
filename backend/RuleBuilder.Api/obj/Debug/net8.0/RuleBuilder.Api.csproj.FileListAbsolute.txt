@@ -59,3 +59,6 @@
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RefinePrompt/skprompt.txt
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RuleExplainer/skprompt.txt
 /workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/AiAssistPrompt/skprompt.txt
+/workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/MultiRuleExtractor/ExtractRules/config.json
+/workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/MultiRuleExtractor/ExtractRules/skprompt.txt
+/workspaces/ai-rule-builder/backend/RuleBuilder.Api/bin/Debug/net8.0/Plugins/RuleBuilder/RuleClusterer/skprompt.txt

@@ -18,6 +18,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Controllers\**\*.cs" />
     <Compile Include="Services\**\*.cs" />
+    <Compile Include="Models\**\*.cs" />
     <Compile Include="Plugins\**\*.cs" />
   </ItemGroup>
 
